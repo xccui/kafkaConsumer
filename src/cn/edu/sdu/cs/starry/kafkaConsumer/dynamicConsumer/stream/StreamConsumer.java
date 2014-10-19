@@ -73,7 +73,6 @@ public class StreamConsumer extends BaseConsumer {
                 fetchTimes = (fetchTimes + 1) % logFlushInterval;
             }
             if (fetchTimes == 0 && messageAndOffsetList.size() > 0) {
-                System.out.println("FLush");
                 try {
                     fetchOperator.flushOffsets();
                 } catch (ConsumerLogException e) {

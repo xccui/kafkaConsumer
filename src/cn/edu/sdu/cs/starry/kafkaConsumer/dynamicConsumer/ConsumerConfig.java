@@ -31,7 +31,6 @@ public class ConsumerConfig {
     private static final String HOSTS_KEY = "brokers";
     private static final String TIME_OUT_KEY = "timeOut";
     private static final String BUFFER_SIZE_KEY = "bufferSize";
-    private static final String FETCH_SIZE_KEY = "fetchSize";
 
     private static final String FETCH_RATE_KEY = "fetchRate";
     private static final String LOG_FLUSH_INTERVAL_KEY = "logFlushInterval";
@@ -176,20 +175,6 @@ public class ConsumerConfig {
         checkIntValueGreaterThan(bufferSize, 0, BUFFER_SIZE_KEY,
                 KAFKA_CONSUMER_PROPERTIES_PATH);
         LOG.info("Using bufferSize: " + bufferSize);
-        // fetchSize
-        String fetchSizeStr = kafkaConsumerProperties
-                .getProperty(FETCH_SIZE_KEY);
-        checkPropertyExist(fetchSizeStr, FETCH_SIZE_KEY,
-                KAFKA_CONSUMER_PROPERTIES_PATH);
-        try {
-            fetchSize = Integer.valueOf(fetchSizeStr.trim());
-        } catch (NumberFormatException ex) {
-            throw new ConsumerConfigException("Invalid fetchSize value: "
-                    + fetchSizeStr);
-        }
-        checkIntValueGreaterThan(fetchSize, 0, FETCH_SIZE_KEY,
-                KAFKA_CONSUMER_PROPERTIES_PATH);
-        LOG.info("Using fetchSize: " + fetchSize);
         // fetchRate
         String fetchRateStr = kafkaConsumerProperties
                 .getProperty(FETCH_RATE_KEY);
