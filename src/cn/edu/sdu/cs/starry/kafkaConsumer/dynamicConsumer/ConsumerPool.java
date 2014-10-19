@@ -32,8 +32,8 @@ public class ConsumerPool {
     private String myName;
 
     public ConsumerPool(String myName, String topic, ConsumerConfig consumerConfig) {
-        consumerMap = new ConcurrentHashMap();
-        managedPartitions = new ConcurrentHashMap();
+        consumerMap = new ConcurrentHashMap<>();
+        managedPartitions = new ConcurrentHashMap<>();
         this.topic = topic;
         this.brokerList = consumerConfig.getBrokers();
         this.timeOut = consumerConfig.getTimeOut();
@@ -46,7 +46,7 @@ public class ConsumerPool {
      * If the consumer is not contained, ask remote brokers.
      *
      * @param partitionId
-     * @return
+     * @return the broker consumer that manage the given partition
      */
     public SimpleConsumer getConsumer(int partitionId) throws KafkaCommunicationException {
         SimpleConsumer consumer = consumerMap.get(partitionId);
@@ -116,14 +116,18 @@ public class ConsumerPool {
                         }
                     }
                 }
+                if (null != returnMetaData) {
+                    break;
+                }
             } catch (Exception e) {
                 LOG.warn("Error while finding leader for partition "+partition+" from broker "+broker.getHost() + ", will try next.");
+                e.printStackTrace();
             } finally {
                 if (consumer != null) consumer.close();
             }
         }
         if (null == returnMetaData) {
-            throw new KafkaCommunicationException("can not find meta for " + topic + ":" + partition);
+            throw new KafkaCommunicationException("Can not find meta for " + topic + ":" + partition);
         }
         return returnMetaData;
     }
