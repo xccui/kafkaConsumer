@@ -70,7 +70,21 @@ public abstract class BaseFetchOperator {
             partitionAndOffsetSet.add(partitionAndOffset);
         }
         Map<Integer, ByteBufferMessageSet> messageSetMap = new TreeMap();
-        boolean noError = doFetch(consumer, partitionAndOffsetSet, fetchSize, messageSetMap);
+        boolean noError = true;
+        boolean connectionError = true;
+        while(connectionError){
+            try {
+                noError = doFetch(consumer, partitionAndOffsetSet, fetchSize, messageSetMap);
+                connectionError = false;
+            } catch (Exception ex){
+                LOG.warn("Error while fetching message, will retry.");
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
         List<KafkaMessage> messageAndOffsetList;
         ByteBufferMessageSet messageSet;
         for (int partitionId : partitionSet) {
@@ -165,6 +179,7 @@ public abstract class BaseFetchOperator {
         FetchRequest req = builder.build();
         FetchResponse fetchResponse = consumer.fetch(req);
         for (PartitionAndOffset partitionAndOffset : partitionAndOffsetSet) {
+            //TODO to deal with fetching errors
             if (fetchResponse.errorCode(topic, partitionAndOffset.partition) == ErrorMapping.NoError()) {
                 messageSetMap.put(partitionAndOffset.partition, fetchResponse.messageSet(topic, partitionAndOffset.partition));
             }

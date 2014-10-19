@@ -49,11 +49,10 @@ public class StreamConsumer extends BaseConsumer {
      * @throws cn.edu.sdu.cs.starry.kafkaConsumer.exception.ConsumerLogException
      *
      */
-    public void startFetchingAndPushing(boolean uptToDate) throws KafkaCommunicationException {
+    public void startFetchingAndPushing(boolean uptToDate, int fetchSize) throws KafkaCommunicationException {
         if (uptToDate) {
             setOffsets(System.currentTimeMillis());
         }
-        List<KafkaMessage> messageAndOffsetList = new LinkedList();//to store all messages
         int fetchTimes = 0;
         while (!shutdown) {
             try {
@@ -61,21 +60,7 @@ public class StreamConsumer extends BaseConsumer {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            for (Map.Entry<BrokerInfo, ConsumerAndPartitions> entry : getManagedPartitions().entrySet()) {
-                Map<Integer, List<KafkaMessage>> messagesOnSingleBrokers = new TreeMap<>();//to store messages on brokers
-                // fetch messages on each broker
-                boolean noError = fetchOperator.fetchMessage(
-                        entry.getValue().consumer,
-                        entry.getValue().partitionSet, fetchSize, messagesOnSingleBrokers);
-                for (Map.Entry<Integer, List<KafkaMessage>> messageOnBroker : messagesOnSingleBrokers.entrySet()) {
-                    messageAndOffsetList.addAll(messageOnBroker.getValue());
-                }
-                if (!noError) {
-                    for (int partition : entry.getValue().partitionSet) {
-                        consumerPool.relocateConsumer(partition);
-                    }
-                }
-            }
+            List<KafkaMessage> messageAndOffsetList = fetchMessage(fetchSize);
             for (KafkaMessage message : messageAndOffsetList) {
                 try {
                     messageSender.sendMessage(message.getMessage());
@@ -84,11 +69,11 @@ public class StreamConsumer extends BaseConsumer {
                     continue;
                 }
             }
-            messageAndOffsetList.clear();
             if (messageAndOffsetList.size() > 0) {
                 fetchTimes = (fetchTimes + 1) % logFlushInterval;
             }
-            if (fetchTimes == 0) {
+            if (fetchTimes == 0 && messageAndOffsetList.size() > 0) {
+                System.out.println("FLush");
                 try {
                     fetchOperator.flushOffsets();
                 } catch (ConsumerLogException e) {
@@ -96,9 +81,10 @@ public class StreamConsumer extends BaseConsumer {
                     LOG.warn(e.getMessage());
                     fetchOperator.handleLogError();
                 }
-                ++fetchTimes;
             }
+            messageAndOffsetList.clear();
         }
+
     }
     @Override
     public void close() {

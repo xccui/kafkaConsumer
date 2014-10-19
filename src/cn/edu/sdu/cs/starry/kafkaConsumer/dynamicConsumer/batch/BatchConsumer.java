@@ -37,46 +37,6 @@ public class BatchConsumer extends BaseConsumer {
     }
 
     /**
-     * Fetch messages from Kafka with default fetch size.
-     *
-     * @return fetched list for {@link KafkaMessage}
-     * @throws KafkaCommunicationException
-     */
-    public List<KafkaMessage> fetchMessage() throws KafkaCommunicationException {
-        return fetchMessage(this.fetchSize);
-    }
-
-    /**
-     * Fetch message from Kafka with given fetch size.
-     *
-     * @param fetchSize the fetch size in bytes
-     * @return fetched list for {@link KafkaMessage}
-     * @throws java.io.IOException if fetch failed due to e.g. I/O error
-     */
-    public List<KafkaMessage> fetchMessage(int fetchSize) {
-        List<KafkaMessage> messageAndOffsetList = new LinkedList();
-        for (Entry<BrokerInfo, ConsumerAndPartitions> entry : getManagedPartitions().entrySet()) {
-            Map<Integer, List<KafkaMessage>> messagesOnSingleBroker = new TreeMap<>();
-            try {
-                boolean noError = fetchOperator.fetchMessage(
-                        entry.getValue().consumer,
-                        entry.getValue().partitionSet, fetchSize, messagesOnSingleBroker);
-                for (Entry<Integer, List<KafkaMessage>> partitionOnSingleBroker: messagesOnSingleBroker.entrySet()) {
-                    messageAndOffsetList.addAll(partitionOnSingleBroker.getValue());
-                }
-                if (!noError) {
-                    for (int partition : entry.getValue().partitionSet) {
-                        consumerPool.relocateConsumer(partition);
-                    }
-                }
-            } catch (KafkaCommunicationException e) {
-                e.printStackTrace();
-            }
-        }
-        return messageAndOffsetList;
-    }
-
-    /**
      * Acknowledge the consumed offset after consumed.
      *
      * @param ackMap

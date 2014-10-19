@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ZKLogManager implements IOffsetLogManager, Watcher {
     private static Logger LOG = LoggerFactory.getLogger(ZKLogManager.class);
-    private static final int TIME_OUT = 5000;
+    private static final int SESSION_TIME_OUT = 5000;
     private static final String PATH_PREFIX = "/starry/kafkaConsumer/dynamic/";
     private String zkHosts;
     private String zkBasePath;
@@ -41,10 +41,10 @@ public class ZKLogManager implements IOffsetLogManager, Watcher {
 
     private void connect() throws ConsumerLogException {
         try {
-            zooKeeper = new ZooKeeper(this.zkHosts, TIME_OUT, this);
+            zooKeeper = new ZooKeeper(this.zkHosts, SESSION_TIME_OUT, this);
         } catch (IOException e) {
             e.printStackTrace();
-            throw new ConsumerLogException(e.getMessage());
+            throw new ConsumerLogException(e);
         }
     }
 
@@ -74,15 +74,15 @@ public class ZKLogManager implements IOffsetLogManager, Watcher {
             }
             String partitionNodePath;
             Stat partitionNodeStat;
-            for (Integer managedPartionId : consumeOffsetMap.keySet()) {
-                partitionNodePath = zkBasePath + "/" + managedPartionId;
-                partitionNodePathMap.put(managedPartionId, partitionNodePath);
+            for (Integer managedPartitionId : consumeOffsetMap.keySet()) {
+                partitionNodePath = zkBasePath + "/" + managedPartitionId;
+                partitionNodePathMap.put(managedPartitionId, partitionNodePath);
                 partitionNodeStat = zooKeeper.exists(partitionNodePath, this);
                 if (null == partitionNodeStat) {
                     createZKNode(partitionNodePath, "0".getBytes("utf-8"));
                 } else {
                     try {
-                        consumeOffsetMap.put(managedPartionId, Long
+                        consumeOffsetMap.put(managedPartitionId, Long
                                 .valueOf(new String(zooKeeper.getData(
                                         partitionNodePath, this,
                                         partitionNodeStat), "utf-8")));
@@ -93,13 +93,13 @@ public class ZKLogManager implements IOffsetLogManager, Watcher {
             }
         } catch (KeeperException e) {
             e.printStackTrace();
-            throw new ConsumerLogException(e.getMessage());
+            throw new ConsumerLogException(e);
         } catch (InterruptedException e) {
             e.printStackTrace();
-            throw new ConsumerLogException(e.getMessage());
+            throw new ConsumerLogException(e);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
-            throw new ConsumerLogException(e.getMessage());
+            throw new ConsumerLogException(e);
         }
     }
 
@@ -107,26 +107,30 @@ public class ZKLogManager implements IOffsetLogManager, Watcher {
     public void saveOffsets(Map<Integer, Long> consumeOffsetMap)
             throws ConsumerLogException {
         for (Entry<Integer, Long> entry : consumeOffsetMap.entrySet()) {
+            //TODO do not save all offsets including unchanged
+            Stat stat;
             try {
-                if (null == zooKeeper.exists(
-                        partitionNodePathMap.get(entry.getKey()), this)) {
+                if (null == (stat = zooKeeper.exists(
+                        partitionNodePathMap.get(entry.getKey()), this))) {
                     LOG.info("create new offset node!\tpartitionId: "
                             + entry.getKey() + "\toffset: " + entry.getValue());
                     createZKNode(partitionNodePathMap.get(entry.getKey()),
                             "0".getBytes("utf-8"));
                 }
-                zooKeeper.setData(partitionNodePathMap.get(entry.getKey()),
-                        String.valueOf(entry.getValue()).getBytes("utf-8"), -1);
+                int oldVersion = stat.getVersion();
+                stat = zooKeeper.setData(partitionNodePathMap.get(entry.getKey()),
+                        String.valueOf(entry.getValue()).getBytes("utf-8"), stat.getVersion());
+                System.out.println(oldVersion+" - "+stat.getVersion());
 
             } catch (KeeperException e) {
                 e.printStackTrace();
-                throw new ConsumerLogException(e.getMessage());
+                throw new ConsumerLogException(e);
             } catch (InterruptedException e) {
                 e.printStackTrace();
-                throw new ConsumerLogException(e.getMessage());
+                throw new ConsumerLogException(e);
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
-                throw new ConsumerLogException(e.getMessage());
+                throw new ConsumerLogException(e);
             }
         }
     }
@@ -174,6 +178,11 @@ public class ZKLogManager implements IOffsetLogManager, Watcher {
 
     @Override
     public void tryToReconnect() throws ConsumerLogException {
+        try {
+            zooKeeper.close();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         connect();
     }
 }
