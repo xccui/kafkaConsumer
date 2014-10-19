@@ -1,0 +1,26 @@
+apply plugin: 'java'
+
+sourceCompatibility=1.7  
+
+version = '0.8'
+
+repositories{
+    mavenCentral()
+}
+sourceSets{
+	main{
+		java {
+			srcDir 'src'
+		}
+	}
+}
+
+dependencies {
+    compile (
+        "org.slf4j:slf4j-api:1.7.0",
+        "org.slf4j:slf4j-log4j12:1.7.5",
+        "log4j:log4j:1.2.16",
+		"com.yammer.metrics:metrics-core:2.2.0",
+		"org.apache.kafka:kafka_2.9.2:0.8.1.1",
+    )
+}
