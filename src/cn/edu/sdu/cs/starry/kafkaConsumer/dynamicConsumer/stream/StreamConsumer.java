@@ -63,7 +63,7 @@ public class StreamConsumer extends BaseConsumer {
             List<KafkaMessage> messageAndOffsetList = fetchMessage(fetchSize);
             for (KafkaMessage message : messageAndOffsetList) {
                 try {
-                    messageSender.sendMessage(message.getMessage());
+                    messageSender.sendMessage(message);
                 } catch (Exception ex) {
                     LOG.error("Sending failed! " + ex.getMessage());
                     continue;

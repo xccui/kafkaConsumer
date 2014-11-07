@@ -2,6 +2,7 @@ package cn.edu.sdu.cs.starry.kafkaConsumer;
 
 import cn.edu.sdu.cs.starry.kafkaConsumer.dynamicConsumer.stream.IMessageSender;
 import cn.edu.sdu.cs.starry.kafkaConsumer.dynamicConsumer.stream.StreamConsumer;
+import cn.edu.sdu.cs.starry.kafkaConsumer.entity.KafkaMessage;
 import cn.edu.sdu.cs.starry.kafkaConsumer.exception.ConsumerConfigException;
 import cn.edu.sdu.cs.starry.kafkaConsumer.exception.ConsumerLogException;
 import cn.edu.sdu.cs.starry.kafkaConsumer.exception.KafkaCommunicationException;
@@ -30,8 +31,8 @@ public class Test {
         }
         StreamConsumer consumer = new StreamConsumer("xccui","lytest123", managedSet,new IMessageSender() {
             @Override
-            public void sendMessage(byte[] message) throws Exception {
-               System.out.println(new String(message,"UTF-8"));
+            public void sendMessage(KafkaMessage message) throws Exception {
+               System.out.println(new String(message.getMessage(),"UTF-8"));
             }
 
             @Override
