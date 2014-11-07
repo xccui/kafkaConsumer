@@ -141,7 +141,13 @@ public abstract class BaseConsumer {
     }
 
 
-    public abstract void close();
+    /**
+     * Get this consumer topic*/
+    public String getTopic() {
+		return topic;
+	}
+
+	public abstract void close();
 
     /**
      * Deal with shutdown signal
