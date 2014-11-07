@@ -1,8 +1,6 @@
 package cn.edu.sdu.cs.starry.kafkaConsumer.dynamicConsumer.stream;
 
 import cn.edu.sdu.cs.starry.kafkaConsumer.dynamicConsumer.BaseConsumer;
-import cn.edu.sdu.cs.starry.kafkaConsumer.entity.BrokerInfo;
-import cn.edu.sdu.cs.starry.kafkaConsumer.entity.ConsumerAndPartitions;
 import cn.edu.sdu.cs.starry.kafkaConsumer.entity.KafkaMessage;
 import cn.edu.sdu.cs.starry.kafkaConsumer.exception.ConsumerConfigException;
 import cn.edu.sdu.cs.starry.kafkaConsumer.exception.ConsumerLogException;
@@ -65,7 +63,7 @@ public class StreamConsumer extends BaseConsumer {
                 try {
                     messageSender.sendMessage(message);
                 } catch (Exception ex) {
-                    LOG.error("Sending failed! " + ex.getMessage());
+                    LOG.error("Sending failed! [{}]", ex.getMessage(), ex);
                     continue;
                 }
             }
