@@ -156,7 +156,7 @@ public abstract class BaseConsumer {
      */
     private class ShutdownHandlerThread extends Thread {
         public void run() {
-            try {
+            /*try {                                            by sry
                 LOG.info("Consumer will shut down!");
                 fetchOperator.flushOffsets();
             } catch (ConsumerLogException e) {
@@ -165,7 +165,9 @@ public abstract class BaseConsumer {
                 fetchOperator.close();
                 consumerPool.closeAllConsumer();
                 close();
-            }
+            }*/
+        	consumerPool.closeAllConsumer();
+            close();
         }
     }
 }

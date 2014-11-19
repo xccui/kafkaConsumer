@@ -75,6 +75,11 @@ public abstract class BaseFetchOperator {
         while(connectionError){
             try {
                 noError = doFetch(consumer, partitionAndOffsetSet, fetchSize, messageSetMap);
+                if(!noError){
+                	//if has error, it should wait 1 second. Otherwise, kafka-server will write log too fast.
+                	//but if sleep too long here, it will be not realtime fetch
+                	Thread.sleep(1000);
+                }
                 connectionError = false;
             } catch (Exception ex){
                 LOG.warn("Error while fetching message, will retry.");
@@ -90,6 +95,7 @@ public abstract class BaseFetchOperator {
         for (int partitionId : partitionSet) {
             messageAndOffsetList = new LinkedList<>();// clear buffer list
             messageSet = messageSetMap.get(partitionId);
+            fetchOffset = sendOffsetMap.get(partitionId);
             if(null != messageSet){
                 if (messageSet.iterator().hasNext()){
                     LOG.debug("Fetched " + messageSet.sizeInBytes() + " bytes form partition " + partitionId + " on host "
@@ -97,7 +103,7 @@ public abstract class BaseFetchOperator {
                     for (MessageAndOffset mo : messageSet) {
                         if (mo.offset() < fetchOffset)
                             continue;
-                        messageAndOffsetList.add(genKafkaMessage(fetchOffset, partitionId, mo
+                        messageAndOffsetList.add(genKafkaMessage(mo.offset(), partitionId, mo
                                 .message().payload()));
                         fetchOffset = mo.nextOffset();
                     }

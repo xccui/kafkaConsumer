@@ -58,6 +58,7 @@ public class BatchConsumer extends BaseConsumer {
     @Override
     public void close() {
         // do nothing
+    	fetchOperator.close();  //by sry
     }
 
     public void resetToConsumedOffset() {

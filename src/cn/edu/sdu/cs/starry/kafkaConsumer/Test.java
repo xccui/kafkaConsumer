@@ -26,10 +26,10 @@ public class Test {
        //     e.printStackTrace();
        // }
         Set<Integer> managedSet = new HashSet<Integer>();
-        for(int i=0;i<30;i++){
+        for(int i=1;i<11;i++){
             managedSet.add(i);
         }
-        StreamConsumer consumer = new StreamConsumer("xccui","lytest123", managedSet,new IMessageSender() {
+        StreamConsumer consumer = new StreamConsumer("sry","ly6_realtime", managedSet,new IMessageSender() {
             @Override
             public void sendMessage(KafkaMessage message) throws Exception {
                System.out.println(new String(message.getMessage(),"UTF-8"));
