@@ -58,61 +58,68 @@ public abstract class BaseFetchOperator {
      * Fetch messages using the given simple consumer and tracking offsets
      */
     public boolean fetchMessage(SimpleConsumer consumer, Set<Integer> partitionSet, int fetchSize, Map<Integer, List<KafkaMessage>> messageOnBrokers) throws KafkaCommunicationException {
-        long fetchOffset = -1;
-        PartitionAndOffset partitionAndOffset = null;
+        HashMap<Integer, Long> fetchOffsetMap = new HashMap<Integer, Long>();
         Set<PartitionAndOffset> partitionAndOffsetSet = new HashSet<PartitionAndOffset>();
         for (int partitionId : partitionSet) {
             if (!sendOffsetMap.containsKey(partitionId)) {
                 initializeOffset(consumer, partitionId);
             }
-            fetchOffset = sendOffsetMap.get(partitionId);
-            partitionAndOffset = new PartitionAndOffset(partitionId, fetchOffset);
-            partitionAndOffsetSet.add(partitionAndOffset);
+            fetchOffsetMap.put(partitionId, sendOffsetMap.get(partitionId));
+            partitionAndOffsetSet.add(new PartitionAndOffset(partitionId, fetchOffsetMap.get(partitionId)));
         }
         Map<Integer, ByteBufferMessageSet> messageSetMap = new TreeMap();
         boolean noError = true;
-        boolean connectionError = true;
+        boolean connectionError = true;    
         while(connectionError){
             try {
+            	LOG.info("fecth operator , begin do fetch");
                 noError = doFetch(consumer, partitionAndOffsetSet, fetchSize, messageSetMap);
                 if(!noError){
                 	//if has error, it should wait 1 second. Otherwise, kafka-server will write log too fast.
                 	//but if sleep too long here, it will be not realtime fetch
-                	Thread.sleep(1000);
+                	LOG.info("fecth with error , sleep 1 second");
+                	try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                    	LOG.info("Thread interrupted, return true");
+                    	return true;
+                    }
                 }
                 connectionError = false;
             } catch (Exception ex){
-                LOG.warn("Error while fetching message, will retry.");
+                LOG.info("Error while fetching message, will retry.");
                 try {
                     Thread.sleep(2000);
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                	LOG.info("Thread interrupted, return true");
+                	return true;
                 }
             }
         }
-        List<KafkaMessage> messageAndOffsetList;
-        ByteBufferMessageSet messageSet;
+        LOG.info("fecth operator , end do fetch");
         for (int partitionId : partitionSet) {
-            messageAndOffsetList = new LinkedList<>();// clear buffer list
-            messageSet = messageSetMap.get(partitionId);
-            fetchOffset = sendOffsetMap.get(partitionId);
-            if(null != messageSet){
-                if (messageSet.iterator().hasNext()){
-                    LOG.debug("Fetched " + messageSet.sizeInBytes() + " bytes form partition " + partitionId + " on host "
-                            + consumer.host() + " with offset " + partitionAndOffset.offset);
-                    for (MessageAndOffset mo : messageSet) {
-                        if (mo.offset() < fetchOffset)
-                            continue;
-                        messageAndOffsetList.add(genKafkaMessage(mo.offset(), partitionId, mo
+        	List<KafkaMessage> messageAndOffsetList = new LinkedList<>();// clear buffer list
+        	ByteBufferMessageSet messageSet = messageSetMap.get(partitionId);
+            long fetchOffset = fetchOffsetMap.get(partitionId);
+            if(messageSet != null && messageSet.iterator().hasNext()){
+                LOG.info("Fetched " + messageSet.sizeInBytes() + " bytes form partition " + partitionId + " on host "
+                        + consumer.host() + " with offset " + fetchOffset);
+                for (MessageAndOffset mo : messageSet) {
+                	//LOG.info("mo.offset=" + mo.offset() + "  fetchOffset=" + fetchOffset);
+                    if (mo.offset() < fetchOffset){
+                    	continue;
+                    }else{
+                    	messageAndOffsetList.add(genKafkaMessage(mo.offset(), partitionId, mo
                                 .message().payload()));
                         fetchOffset = mo.nextOffset();
                     }
-                    LOG.debug("Update offset for " + partitionId + " with offset " + fetchOffset);
-                    sendOffsetMap.put(partitionId, fetchOffset);
-                    messageOnBrokers.put(partitionId, messageAndOffsetList);
                 }
+                LOG.info("Update offset for " + partitionId + " with offset " + fetchOffset);
+                sendOffsetMap.put(partitionId, fetchOffset);
+                messageOnBrokers.put(partitionId, messageAndOffsetList);
             }
         }
+        LOG.info("fecth operator , finished do fetch");
         return noError;
     }
 

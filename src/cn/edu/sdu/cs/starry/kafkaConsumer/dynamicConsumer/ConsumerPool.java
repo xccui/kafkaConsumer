@@ -57,8 +57,8 @@ public class ConsumerPool {
                 consumer = managedPartitions.get(brokerInfo).consumer;
             } else {
                 consumer = new SimpleConsumer(meta.leader().host(), meta.leader().port(), timeOut, bufferSize, myName + "_" + partitionId);
-                Set<Integer> partitionSet = new HashSet<Integer>();
-                partitionSet.add(partitionId);
+                //Set<Integer> partitionSet = new HashSet<Integer>();
+                //partitionSet.add(partitionId);
                 managedPartitions.put(brokerInfo, new ConsumerAndPartitions(consumer));
             }
             managedPartitions.get(brokerInfo).partitionSet.add(partitionId);
@@ -87,6 +87,7 @@ public class ConsumerPool {
     public SimpleConsumer relocateConsumer(int partitionId) throws KafkaCommunicationException {
         SimpleConsumer oldConsumer = consumerMap.remove(partitionId);
         BrokerInfo brokerInfo = new BrokerInfo(oldConsumer.host(), oldConsumer.port());
+        oldConsumer.close();
         ConsumerAndPartitions consumerAndPartitions = managedPartitions.get(brokerInfo);
         consumerAndPartitions.partitionSet.remove(partitionId);
         if (consumerAndPartitions.partitionSet.isEmpty()) {
