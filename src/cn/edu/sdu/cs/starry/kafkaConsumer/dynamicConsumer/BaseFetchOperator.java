@@ -138,11 +138,13 @@ public abstract class BaseFetchOperator {
         Map<Integer, ByteBufferMessageSet> messageSetMap = new TreeMap();
         doFetch(consumer, partitionAndOffsetList, fetchSize, messageSetMap);
         ByteBufferMessageSet messageSet = messageSetMap.get(partitionId);
-        Iterator<MessageAndOffset> iterator = messageSet.iterator();
-        if (iterator.hasNext()) {
-            return genKafkaMessage(offset, partitionId, iterator.next()
-                    .message().payload());
-        }
+        if(messageSet != null){
+        	Iterator<MessageAndOffset> iterator = messageSet.iterator();
+            if (iterator.hasNext()) {
+                return genKafkaMessage(offset, partitionId, iterator.next()
+                        .message().payload());
+            }
+        }   
         return null;
     }
 
