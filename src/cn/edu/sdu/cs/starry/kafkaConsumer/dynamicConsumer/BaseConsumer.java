@@ -58,7 +58,8 @@ public abstract class BaseConsumer {
         try {
             consumerPool.initConsumerPool(managedPartitionsSet);
         } catch (KafkaCommunicationException e) {
-            e.printStackTrace();
+            LOG.error("can not connect to kafka, go to shutdown" + e.getMessage());
+            System.exit(1);
         }
         initFetchOperator();
         fetchOperator.loadHistoryOffsets();
@@ -67,10 +68,12 @@ public abstract class BaseConsumer {
 
     /**
      * Reconnect when comes an exception, especially for IOException
+     * @throws KafkaCommunicationException 
      */
-    public void reconnect() {
+    public void reconnect() throws KafkaCommunicationException {
         consumerPool.closeAllConsumer();
         consumerPool = new ConsumerPool(consumerName, topic, consumerConfig);
+        consumerPool.initConsumerPool(managedPartitionsSet);
         LOG.warn("kafka consumer reconnected!! Perhaps encountered an error!");
     }
 
@@ -144,7 +147,12 @@ public abstract class BaseConsumer {
     protected Map<BrokerInfo, ConsumerAndPartitions> getManagedPartitions() {
         return consumerPool.managedPartitions;
     }
-
+    
+    protected void setBatchOffsets() throws KafkaCommunicationException {
+        for (Map.Entry<BrokerInfo, ConsumerAndPartitions> entry : consumerPool.managedPartitions.entrySet()) {
+            fetchOperator.setBatchOffset(entry.getValue().consumer, entry.getValue().partitionSet);
+        }
+    }
 
     /**
      * Get this consumer topic*/

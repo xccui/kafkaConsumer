@@ -182,7 +182,26 @@ public abstract class BaseFetchOperator {
             sendOffsetMap.put(partitionId, offsetResponse.offsets(topic, partitionId)[0]);
         }
     }
-
+    
+    protected void setBatchOffset(SimpleConsumer consumer, Set<Integer> partitionSet) throws KafkaCommunicationException {
+    	Map<TopicAndPartition, PartitionOffsetRequestInfo> requestInfo = new HashMap<TopicAndPartition, PartitionOffsetRequestInfo>();
+    	for (int partitionId : partitionSet) {
+    		requestInfo.put(new TopicAndPartition(topic, partitionId), new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.EarliestTime(), 1));
+    	}
+    	OffsetRequest offsetRequest = new OffsetRequest(requestInfo, kafka.api.OffsetRequest.CurrentVersion(), clientName);
+    	OffsetResponse offsetResponse = consumer.getOffsetsBefore(offsetRequest);
+    	if (offsetResponse.hasError()) {
+    		throw new KafkaCommunicationException(offsetResponse.toString());
+    	}
+    	for (int partitionId : partitionSet) {
+    		long offset = offsetResponse.offsets(topic, partitionId)[0];
+    		if(!sendOffsetMap.containsKey(partitionId)){
+    			sendOffsetMap.put(partitionId, offset);
+    		}else if(sendOffsetMap.get(partitionId) < offset){
+    			sendOffsetMap.put(partitionId, offset);
+    		}
+    	}
+    }	
 
     private boolean doFetch(SimpleConsumer consumer,
                             Set<PartitionAndOffset> partitionAndOffsetSet, int fetchSize, Map<Integer, ByteBufferMessageSet> messageSetMap) {

@@ -49,7 +49,7 @@ public class StreamConsumer extends BaseConsumer {
      */
     public void startFetchingAndPushing(boolean uptToDate, int fetchSize) throws KafkaCommunicationException {
         if (uptToDate) {
-            setOffsets(System.currentTimeMillis());
+            setOffsets(kafka.api.OffsetRequest.LatestTime());
         }
         int fetchTimes = 0;
         while (!shutdown) {
