@@ -107,13 +107,21 @@ public class ConsumerPool {
                 topics.add(topic);
                 TopicMetadataRequest req = new TopicMetadataRequest(topics);
                 kafka.javaapi.TopicMetadataResponse resp = consumer.send(req);
+                if(resp == null){
+                	continue;
+                }
                 List<TopicMetadata> metaData = resp.topicsMetadata();
+                if(metaData == null){
+                	continue;
+                }
                 for (TopicMetadata item : metaData) {
                     for (PartitionMetadata part : item.partitionsMetadata()) {
                         if (part.partitionId() == partition) {
-                            returnMetaData = part;
-                            LOG.info("Found leader " + part.leader().host() + " for partition " + partition);
-                            break;
+                        	if(part.leader() != null){
+                        		 returnMetaData = part;
+                                 LOG.info("Found leader " + part.leader().host() + " for partition " + partition);
+                                 break;
+                        	}   
                         }
                     }
                 }
@@ -130,6 +138,7 @@ public class ConsumerPool {
         if (null == returnMetaData) {
             throw new KafkaCommunicationException("Can not find meta for " + topic + ":" + partition);
         }
+        
         return returnMetaData;
     }
 

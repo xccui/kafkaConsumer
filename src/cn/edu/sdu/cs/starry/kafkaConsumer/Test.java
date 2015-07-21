@@ -39,7 +39,7 @@ public class Test {
                 //To change body of implemented methods use File | Settings | File Templates.
             }
         });
-        consumer.startFetchingAndPushing(true, 10 * 1024 * 1024);
+        consumer.startFetchingAndPushing(true, 10 * 1024 * 1024, 500);
     }
 }
 
