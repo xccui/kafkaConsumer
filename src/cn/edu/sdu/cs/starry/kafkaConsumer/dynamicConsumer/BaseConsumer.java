@@ -58,7 +58,8 @@ public abstract class BaseConsumer {
         try {
             consumerPool.initConsumerPool(managedPartitionsSet);
         } catch (KafkaCommunicationException e) {
-            e.printStackTrace();
+            LOG.error("can not connect to kafka, go to shutdown" + e.getMessage());
+            System.exit(1);
         }
         initFetchOperator();
         fetchOperator.loadHistoryOffsets();
@@ -67,10 +68,12 @@ public abstract class BaseConsumer {
 
     /**
      * Reconnect when comes an exception, especially for IOException
+     * @throws KafkaCommunicationException 
      */
-    public void reconnect() {
+    public void reconnect() throws KafkaCommunicationException {
         consumerPool.closeAllConsumer();
         consumerPool = new ConsumerPool(consumerName, topic, consumerConfig);
+        consumerPool.initConsumerPool(managedPartitionsSet);
         LOG.warn("kafka consumer reconnected!! Perhaps encountered an error!");
     }
 
@@ -101,27 +104,32 @@ public abstract class BaseConsumer {
      * @return fetched list for {@link KafkaMessage}
      */
     public List<KafkaMessage> fetchMessage(int fetchSize) throws KafkaCommunicationException {
+    	LOG.info("begin to fetch message");
         List<KafkaMessage> messageAndOffsetList = new LinkedList<>();//to store all messages
         List<Integer> outDatedPartitionList = new LinkedList<>();
         for (Map.Entry<BrokerInfo, ConsumerAndPartitions> entry : getManagedPartitions().entrySet()) {
             Map<Integer, List<KafkaMessage>> messagesOnSingleBrokers = new TreeMap<>();//to store messages on brokers
             // fetch messages on each broker
+            LOG.info("fetch borker " + entry.getKey().getHost());
+            LOG.info("partitionSet " + entry.getValue().partitionSet);
             boolean noError = fetchOperator.fetchMessage(
                     entry.getValue().consumer,
                     entry.getValue().partitionSet, fetchSize, messagesOnSingleBrokers);
             for (Map.Entry<Integer, List<KafkaMessage>> messageOnBroker : messagesOnSingleBrokers.entrySet()) {
                 messageAndOffsetList.addAll(messageOnBroker.getValue());
             }
+            LOG.info("noError = " + noError);
             if (!noError){
                 //add partition with fetching errors to out date list
-                outDatedPartitionList.addAll(entry.getValue().partitionSet) ;
+                outDatedPartitionList.addAll(entry.getValue().partitionSet);
             }
-
         }
+        LOG.info("partition with error is " + outDatedPartitionList);
         for (int partition : outDatedPartitionList) {
             //relocate all partitions with fetching errors
             consumerPool.relocateConsumer(partition);
         }
+        LOG.info("finished fetch message");
         return messageAndOffsetList;
     }
     /**
@@ -139,9 +147,20 @@ public abstract class BaseConsumer {
     protected Map<BrokerInfo, ConsumerAndPartitions> getManagedPartitions() {
         return consumerPool.managedPartitions;
     }
+    
+    protected void setBatchOffsets() throws KafkaCommunicationException {
+        for (Map.Entry<BrokerInfo, ConsumerAndPartitions> entry : consumerPool.managedPartitions.entrySet()) {
+            fetchOperator.setBatchOffset(entry.getValue().consumer, entry.getValue().partitionSet);
+        }
+    }
 
+    /**
+     * Get this consumer topic*/
+    public String getTopic() {
+		return topic;
+	}
 
-    public abstract void close();
+	public abstract void close();
 
     /**
      * Deal with shutdown signal
@@ -150,7 +169,7 @@ public abstract class BaseConsumer {
      */
     private class ShutdownHandlerThread extends Thread {
         public void run() {
-            try {
+            /*try {                                            by sry
                 LOG.info("Consumer will shut down!");
                 fetchOperator.flushOffsets();
             } catch (ConsumerLogException e) {
@@ -159,7 +178,9 @@ public abstract class BaseConsumer {
                 fetchOperator.close();
                 consumerPool.closeAllConsumer();
                 close();
-            }
+            }*/
+        	consumerPool.closeAllConsumer();
+            close();
         }
     }
 }

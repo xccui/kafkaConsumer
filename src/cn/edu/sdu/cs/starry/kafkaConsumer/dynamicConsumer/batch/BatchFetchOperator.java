@@ -19,7 +19,7 @@ import java.util.TreeMap;
  */
 public class BatchFetchOperator extends BaseFetchOperator {
     private static Logger LOG = LoggerFactory
-            .getLogger(BaseFetchOperator.class);
+            .getLogger(BatchFetchOperator.class);
     private Map<Integer, Long> consumeOffsetMap;
 
 

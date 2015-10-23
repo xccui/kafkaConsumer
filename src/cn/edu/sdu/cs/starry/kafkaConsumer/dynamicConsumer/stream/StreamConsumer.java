@@ -1,8 +1,6 @@
 package cn.edu.sdu.cs.starry.kafkaConsumer.dynamicConsumer.stream;
 
 import cn.edu.sdu.cs.starry.kafkaConsumer.dynamicConsumer.BaseConsumer;
-import cn.edu.sdu.cs.starry.kafkaConsumer.entity.BrokerInfo;
-import cn.edu.sdu.cs.starry.kafkaConsumer.entity.ConsumerAndPartitions;
 import cn.edu.sdu.cs.starry.kafkaConsumer.entity.KafkaMessage;
 import cn.edu.sdu.cs.starry.kafkaConsumer.exception.ConsumerConfigException;
 import cn.edu.sdu.cs.starry.kafkaConsumer.exception.ConsumerLogException;
@@ -23,19 +21,19 @@ public class StreamConsumer extends BaseConsumer {
     private boolean shutdown;
     private IMessageSender messageSender;
     private int logFlushInterval;
-    private int fetchRate;
+    //private int fetchRate;
 
     public StreamConsumer(String consumerName, String topic, Set<Integer> managedPartitionsSet, IMessageSender messageSender) throws ConsumerConfigException, ConsumerLogException {
         super(consumerName,topic, managedPartitionsSet);
         this.messageSender = messageSender;
         logFlushInterval = consumerConfig.getLogFlushInterval();
-        fetchRate = consumerConfig.getFetchRate();
+        //fetchRate = consumerConfig.getFetchRate();
         shutdown = false;
     }
 
     @Override
     protected void initFetchOperator() throws ConsumerLogException {
-        Set<Integer> partitionSet = new HashSet();
+        Set<Integer> partitionSet = new HashSet<>();
         partitionSet.addAll(managedPartitionsSet);
         fetchOperator = new StreamFetchOperator(topic,
                 managedPartitionsSet,
@@ -49,9 +47,9 @@ public class StreamConsumer extends BaseConsumer {
      * @throws cn.edu.sdu.cs.starry.kafkaConsumer.exception.ConsumerLogException
      *
      */
-    public void startFetchingAndPushing(boolean uptToDate, int fetchSize) throws KafkaCommunicationException {
+    public void startFetchingAndPushing(boolean uptToDate, int fetchSize, long fetchRate) throws KafkaCommunicationException {
         if (uptToDate) {
-            setOffsets(System.currentTimeMillis());
+            setOffsets(kafka.api.OffsetRequest.LatestTime());
         }
         int fetchTimes = 0;
         while (!shutdown) {
@@ -63,9 +61,9 @@ public class StreamConsumer extends BaseConsumer {
             List<KafkaMessage> messageAndOffsetList = fetchMessage(fetchSize);
             for (KafkaMessage message : messageAndOffsetList) {
                 try {
-                    messageSender.sendMessage(message.getMessage());
+                    messageSender.sendMessage(message);
                 } catch (Exception ex) {
-                    LOG.error("Sending failed! " + ex.getMessage());
+                    LOG.error("Sending failed! [{}]", ex.getMessage(), ex);
                     continue;
                 }
             }

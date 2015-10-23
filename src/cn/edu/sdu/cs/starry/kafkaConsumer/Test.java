@@ -2,36 +2,36 @@ package cn.edu.sdu.cs.starry.kafkaConsumer;
 
 import cn.edu.sdu.cs.starry.kafkaConsumer.dynamicConsumer.stream.IMessageSender;
 import cn.edu.sdu.cs.starry.kafkaConsumer.dynamicConsumer.stream.StreamConsumer;
+import cn.edu.sdu.cs.starry.kafkaConsumer.entity.KafkaMessage;
 import cn.edu.sdu.cs.starry.kafkaConsumer.exception.ConsumerConfigException;
 import cn.edu.sdu.cs.starry.kafkaConsumer.exception.ConsumerLogException;
 import cn.edu.sdu.cs.starry.kafkaConsumer.exception.KafkaCommunicationException;
 
-import java.nio.ByteBuffer;
 import java.util.*;
 
 public class Test {
     public static void main(String args[]) throws ConsumerConfigException, ConsumerLogException, KafkaCommunicationException {
-       // Test example = new Test();
-       // long maxReads = Long.parseLong(args[0]);
-       // String topic = args[1];
-       // int partition = Integer.parseInt(args[2]);
-       // List<String> seeds = new ArrayList<String>();
-       // seeds.add(args[3]);
-       // int port = Integer.parseInt(args[4]);
-       // try {
-       //     example.run(maxReads, topic, partition, seeds, port);
-       // } catch (Exception e) {
-       //     System.out.println("Oops:" + e);
-       //     e.printStackTrace();
-       // }
         Set<Integer> managedSet = new HashSet<Integer>();
         for(int i=0;i<30;i++){
             managedSet.add(i);
         }
-        StreamConsumer consumer = new StreamConsumer("xccui","lytest123", managedSet,new IMessageSender() {
+        managedSet.remove(23);
+        managedSet.remove(8);
+        StreamConsumer consumer = new StreamConsumer("sry","test", managedSet,new IMessageSender() {
             @Override
-            public void sendMessage(byte[] message) throws Exception {
-               System.out.println(new String(message,"UTF-8"));
+            public void sendMessage(KafkaMessage message) throws Exception {
+               /*byte[] bs = message.getMessage();
+               Message msg = Message.fromBytes(bs);
+               final byte[] text = MessageDivider.getText(msg);
+               final byte[] image = MessageDivider.getImage(msg);
+               String recstr = new String(text, "UTF-8");
+               System.out.println(recstr);
+               System.out.println(image.length);
+               FileOutputStream stream = new FileOutputStream(new File("F:/test.jpg"));
+               stream.write(image);
+               stream.flush();
+               stream.close();
+               Thread.sleep(5000);*/
             }
 
             @Override
@@ -39,7 +39,7 @@ public class Test {
                 //To change body of implemented methods use File | Settings | File Templates.
             }
         });
-        consumer.startFetchingAndPushing(true, 1024*1024*10);
+        consumer.startFetchingAndPushing(true, 10 * 1024 * 1024, 500);
     }
 }
 

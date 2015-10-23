@@ -57,8 +57,8 @@ public class ConsumerPool {
                 consumer = managedPartitions.get(brokerInfo).consumer;
             } else {
                 consumer = new SimpleConsumer(meta.leader().host(), meta.leader().port(), timeOut, bufferSize, myName + "_" + partitionId);
-                Set<Integer> partitionSet = new HashSet<Integer>();
-                partitionSet.add(partitionId);
+                //Set<Integer> partitionSet = new HashSet<Integer>();
+                //partitionSet.add(partitionId);
                 managedPartitions.put(brokerInfo, new ConsumerAndPartitions(consumer));
             }
             managedPartitions.get(brokerInfo).partitionSet.add(partitionId);
@@ -87,6 +87,7 @@ public class ConsumerPool {
     public SimpleConsumer relocateConsumer(int partitionId) throws KafkaCommunicationException {
         SimpleConsumer oldConsumer = consumerMap.remove(partitionId);
         BrokerInfo brokerInfo = new BrokerInfo(oldConsumer.host(), oldConsumer.port());
+        oldConsumer.close();
         ConsumerAndPartitions consumerAndPartitions = managedPartitions.get(brokerInfo);
         consumerAndPartitions.partitionSet.remove(partitionId);
         if (consumerAndPartitions.partitionSet.isEmpty()) {
@@ -106,13 +107,21 @@ public class ConsumerPool {
                 topics.add(topic);
                 TopicMetadataRequest req = new TopicMetadataRequest(topics);
                 kafka.javaapi.TopicMetadataResponse resp = consumer.send(req);
+                if(resp == null){
+                	continue;
+                }
                 List<TopicMetadata> metaData = resp.topicsMetadata();
+                if(metaData == null){
+                	continue;
+                }
                 for (TopicMetadata item : metaData) {
                     for (PartitionMetadata part : item.partitionsMetadata()) {
                         if (part.partitionId() == partition) {
-                            returnMetaData = part;
-                            LOG.info("Found leader " + part.leader().host() + " for partition " + partition);
-                            break;
+                        	if(part.leader() != null){
+                        		 returnMetaData = part;
+                                 LOG.info("Found leader " + part.leader().host() + " for partition " + partition);
+                                 break;
+                        	}   
                         }
                     }
                 }
@@ -129,6 +138,7 @@ public class ConsumerPool {
         if (null == returnMetaData) {
             throw new KafkaCommunicationException("Can not find meta for " + topic + ":" + partition);
         }
+        
         return returnMetaData;
     }
 

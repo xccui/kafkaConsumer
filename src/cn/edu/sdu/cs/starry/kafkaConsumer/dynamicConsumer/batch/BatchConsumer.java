@@ -25,6 +25,14 @@ public class BatchConsumer extends BaseConsumer {
     public BatchConsumer(String consumerName,String topic, Set<Integer> managedPartitionsSet)
             throws ConsumerConfigException, ConsumerLogException {
         super(consumerName,topic, managedPartitionsSet);
+        LOG.info("finished init, then set batchOffset");
+        try {
+			setBatchOffsets();
+		} catch (KafkaCommunicationException e) {
+			LOG.error("can not connect to kafka, go to shutdown" + e.getMessage());
+	        System.exit(1);
+		}
+        LOG.info("set batchOffset finished");
     }
 
     @Override
@@ -58,6 +66,7 @@ public class BatchConsumer extends BaseConsumer {
     @Override
     public void close() {
         // do nothing
+    	fetchOperator.close();  //by sry
     }
 
     public void resetToConsumedOffset() {
