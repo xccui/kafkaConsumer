@@ -106,6 +106,7 @@ public abstract class BaseFetchOperator {
                         + consumer.host() + " with offset " + fetchOffset);
                 for (MessageAndOffset mo : messageSet) {
                 	//LOG.info("mo.offset=" + mo.offset() + "  fetchOffset=" + fetchOffset);
+                	LOG.info("partition: [{}], fetchOffset: [{}], MessageOffset: [{}]", partitionId, fetchOffset, mo.offset());
                     if (mo.offset() < fetchOffset){
                     	continue;
                     }else{
@@ -212,10 +213,67 @@ public abstract class BaseFetchOperator {
         }
         FetchRequest req = builder.build();
         FetchResponse fetchResponse = consumer.fetch(req);
+        LOG.info("Fetch Response: has Error:[{}]; currentPAO:[{}]", fetchResponse.hasError(), partitionAndOffsetSet);
         for (PartitionAndOffset partitionAndOffset : partitionAndOffsetSet) {
             //TODO to deal with fetching errors
-            if (fetchResponse.errorCode(topic, partitionAndOffset.partition) == ErrorMapping.NoError()) {
+        	short errorCode = fetchResponse.errorCode(topic, partitionAndOffset.partition);
+            if (errorCode == ErrorMapping.NoError()) {
                 messageSetMap.put(partitionAndOffset.partition, fetchResponse.messageSet(topic, partitionAndOffset.partition));
+            } else {
+            	LOG.error("Fetch Error: Error Code :[{}], topic :[{}], partition :[{}]", 
+            			errorCode, topic, partitionAndOffset.partition, ErrorMapping.exceptionFor(errorCode));
+            	if(errorCode == ErrorMapping.OffsetOutOfRangeCode()){
+            		//handle offset out of range
+            		LOG.error("OffsetOutOfRangeException detected. Will handle this automaticly.");
+            		
+                	LOG.error("OffsetOutOfRange. Going to decide which offset to use.");
+                	//fetch earliest offset.
+                	LOG.error("Current fetch offset : [{}]" , partitionAndOffset.offset);
+                	long earliestOffset = -1 , latestOffset = -1;
+                	Map<TopicAndPartition, PartitionOffsetRequestInfo> requestInfo = new HashMap<TopicAndPartition, PartitionOffsetRequestInfo>();
+                	requestInfo.put(new TopicAndPartition(topic, partitionAndOffset.partition),
+                			new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.EarliestTime(), 1));
+                	OffsetRequest offsetRequest = new OffsetRequest(requestInfo, kafka.api.OffsetRequest.CurrentVersion(), clientName);
+                	OffsetResponse offsetResponse = consumer.getOffsetsBefore(offsetRequest);
+                	errorCode = offsetResponse.errorCode(topic, partitionAndOffset.partition);
+                	if(errorCode == ErrorMapping.NoError()){
+                		LOG.error("Get earliest offset done.");
+                    	earliestOffset = offsetResponse.offsets(topic, partitionAndOffset.partition)[0];
+                    	LOG.error("Earlies Offset : [{}]" ,  earliestOffset);
+                	} else {
+                    	LOG.error("Get earliest offset done. hasError = [{}]. code = [{}]", offsetResponse.hasError(), errorCode, ErrorMapping.exceptionFor(errorCode));
+                	}
+                	
+                	//fetch latest offset.
+                	requestInfo = new HashMap<TopicAndPartition, PartitionOffsetRequestInfo>();
+                	requestInfo.put(new TopicAndPartition(topic, partitionAndOffset.partition),
+                			new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.LatestTime(), 1));
+                	offsetRequest = new OffsetRequest(requestInfo, kafka.api.OffsetRequest.CurrentVersion(), clientName);
+                	offsetResponse = consumer.getOffsetsBefore(offsetRequest);
+                	errorCode = offsetResponse.errorCode(topic, partitionAndOffset.partition);
+                	if(errorCode == ErrorMapping.NoError()){
+                    	LOG.warn("get Latest offset done.");
+                    	latestOffset =  offsetResponse.offsets(topic, partitionAndOffset.partition)[0] ;
+                    	LOG.error("Latest Offset : [{}]" , latestOffset);
+                	} else {
+                		LOG.error("get Latest offset done. hasError = [{}]. code = [{}]", offsetResponse.hasError(), errorCode, ErrorMapping.exceptionFor(errorCode));
+                	}
+                	
+                	//only set current fetch offset to earliest offset if possible. DO NOTHING otherwise.
+                	if(earliestOffset > 0 && partitionAndOffset.offset < earliestOffset){
+                		LOG.info("set partition : [{}] offset from [{}] to [{}]", partitionAndOffset.partition, partitionAndOffset.offset, earliestOffset);
+                		LOG.error("drop offset : [{}]", earliestOffset - partitionAndOffset.offset);
+                		LOG.warn("drop offset : [{}]", earliestOffset - partitionAndOffset.offset);
+                		sendOffsetMap.put(partitionAndOffset.partition, earliestOffset);
+                		LOG.error("set partition : [{}] offset from [{}] to [{}] done.", partitionAndOffset.partition, partitionAndOffset.offset, earliestOffset);
+                	}else if (latestOffset > 0 && partitionAndOffset.offset > latestOffset){
+                		LOG.error("Fetch overhead!!!!!");
+                	} else {
+                		LOG.error("Something strange happens.");
+                	}
+            	}
+            	
+            	
             }
         }
         if (fetchResponse.hasError()) {

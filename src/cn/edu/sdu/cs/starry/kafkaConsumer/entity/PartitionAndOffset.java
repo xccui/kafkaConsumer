@@ -15,4 +15,10 @@ public class PartitionAndOffset {
         this.partition = partition;
         this.offset = offset;
     }
+
+	@Override
+	public String toString() {
+		return "PartitionAndOffset [partition=" + partition + ", offset="
+				+ offset + "]";
+	}
 }
