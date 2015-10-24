@@ -106,7 +106,6 @@ public abstract class BaseFetchOperator {
                         + consumer.host() + " with offset " + fetchOffset);
                 for (MessageAndOffset mo : messageSet) {
                 	//LOG.info("mo.offset=" + mo.offset() + "  fetchOffset=" + fetchOffset);
-                	LOG.info("partition: [{}], fetchOffset: [{}], MessageOffset: [{}]", partitionId, fetchOffset, mo.offset());
                     if (mo.offset() < fetchOffset){
                     	continue;
                     }else{
@@ -213,7 +212,6 @@ public abstract class BaseFetchOperator {
         }
         FetchRequest req = builder.build();
         FetchResponse fetchResponse = consumer.fetch(req);
-        LOG.info("Fetch Response: has Error:[{}]; currentPAO:[{}]", fetchResponse.hasError(), partitionAndOffsetSet);
         for (PartitionAndOffset partitionAndOffset : partitionAndOffsetSet) {
             //TODO to deal with fetching errors
         	short errorCode = fetchResponse.errorCode(topic, partitionAndOffset.partition);
